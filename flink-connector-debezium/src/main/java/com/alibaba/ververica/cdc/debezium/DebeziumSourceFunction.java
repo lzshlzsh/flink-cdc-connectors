@@ -282,7 +282,7 @@ public class DebeziumSourceFunction<T> extends RichSourceFunction<T> implements
 			.collect(Collectors.joining());
 		LOG.info("Debezium Properties:\n{}", propsString);
 
-		int sourcePosLoggingInterval = Integer.valueOf(properties.getProperty("source-pos-logging-interval"));
+		long sourcePosLoggingInterval = (Long) properties.get("source-pos-logging-interval");
 		this.debeziumConsumer = new DebeziumChangeConsumer<>(
 			sourceContext,
 			deserializer,
