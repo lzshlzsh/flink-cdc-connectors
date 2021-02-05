@@ -20,6 +20,7 @@ package com.alibaba.ververica.cdc.debezium.internal;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.core.memory.MemoryUtils;
+import org.apache.flink.runtime.util.ExecutorThreadFactory;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.util.Collector;
 
@@ -37,6 +38,9 @@ import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A consumer that consumes change messages from {@link DebeziumEngine}.
@@ -66,9 +70,15 @@ public class DebeziumChangeConsumer<T> implements DebeziumEngine.ChangeConsumer<
 
 	private final DebeziumStateSerializer stateSerializer;
 
+	private final long binlogLoggingInterval;
+
 	private boolean isInDbSnapshotPhase;
 
 	private boolean lockHold = false;
+
+	private volatile Map<String, ?> binlogFile;
+	private volatile Map<String, ?> pos;
+	private ScheduledExecutorService scheduler;
 
 	// ------------------------------------------------------------------------
 
@@ -76,7 +86,8 @@ public class DebeziumChangeConsumer<T> implements DebeziumEngine.ChangeConsumer<
 			SourceFunction.SourceContext<T> sourceContext,
 			DebeziumDeserializationSchema<T> deserialization,
 			boolean isInDbSnapshotPhase,
-			ErrorReporter errorReporter) {
+			ErrorReporter errorReporter,
+			long binlogLoggingIntervalMinutes) {
 		this.sourceContext = sourceContext;
 		this.checkpointLock = sourceContext.getCheckpointLock();
 		this.deserialization = deserialization;
@@ -85,6 +96,15 @@ public class DebeziumChangeConsumer<T> implements DebeziumEngine.ChangeConsumer<
 		this.errorReporter = errorReporter;
 		this.debeziumState = new DebeziumState();
 		this.stateSerializer = new DebeziumStateSerializer();
+		this.binlogLoggingInterval = binlogLoggingIntervalMinutes;
+		this.scheduler = Executors.newScheduledThreadPool(1, new ExecutorThreadFactory("binlog-pos-logging"));
+
+		this.scheduler.scheduleAtFixedRate(
+				() -> {
+					LOG.info("Binlog pos info: {}, {}", binlogFile, pos); },
+				this.binlogLoggingInterval,
+				this.binlogLoggingInterval, TimeUnit.MINUTES
+		);
 	}
 
 	@Override
@@ -92,8 +112,10 @@ public class DebeziumChangeConsumer<T> implements DebeziumEngine.ChangeConsumer<
 			List<ChangeEvent<SourceRecord, SourceRecord>> changeEvents,
 			DebeziumEngine.RecordCommitter<ChangeEvent<SourceRecord, SourceRecord>> committer) throws InterruptedException {
 		try {
+			SourceRecord lastRecord = null;
 			for (ChangeEvent<SourceRecord, SourceRecord> event : changeEvents) {
 				SourceRecord record = event.value();
+				lastRecord = record;
 				deserialization.deserialize(record, debeziumCollector);
 
 				if (isInDbSnapshotPhase) {
@@ -111,6 +133,10 @@ public class DebeziumChangeConsumer<T> implements DebeziumEngine.ChangeConsumer<
 
 				// emit the actual records. this also updates offset state atomically
 				emitRecordsUnderCheckpointLock(debeziumCollector.records, record.sourcePartition(), record.sourceOffset());
+			}
+			if (lastRecord != null) {
+				binlogFile = lastRecord.sourcePartition();
+				pos = lastRecord.sourceOffset();
 			}
 		} catch (Exception e) {
 			LOG.error("Error happens when consuming change messages.", e);

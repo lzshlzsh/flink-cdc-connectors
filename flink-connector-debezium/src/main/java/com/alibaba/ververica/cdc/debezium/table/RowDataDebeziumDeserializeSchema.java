@@ -43,9 +43,12 @@ import io.debezium.time.NanoTime;
 import io.debezium.time.NanoTimestamp;
 import io.debezium.time.Timestamp;
 import org.apache.kafka.connect.data.Decimal;
+import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -60,6 +63,7 @@ import java.time.ZoneId;
 public final class RowDataDebeziumDeserializeSchema implements DebeziumDeserializationSchema<RowData> {
 	private static final long serialVersionUID = -4852684966051743776L;
 
+	protected static final Logger LOG = LoggerFactory.getLogger(RowDataDebeziumDeserializeSchema.class);
 	/**
 	 * Custom validator to validate the row value.
 	 */
@@ -94,29 +98,37 @@ public final class RowDataDebeziumDeserializeSchema implements DebeziumDeseriali
 
 	@Override
 	public void deserialize(SourceRecord record, Collector<RowData> out) throws Exception {
-		Envelope.Operation op = Envelope.operationFor(record);
-		Struct value = (Struct) record.value();
-		Schema valueSchema = record.valueSchema();
-		if (op == Envelope.Operation.CREATE || op == Envelope.Operation.READ) {
-			GenericRowData insert = extractAfterRow(value, valueSchema);
-			validator.validate(insert, RowKind.INSERT);
-			insert.setRowKind(RowKind.INSERT);
-			out.collect(insert);
-		} else if (op == Envelope.Operation.DELETE) {
-			GenericRowData delete = extractBeforeRow(value, valueSchema);
-			validator.validate(delete, RowKind.DELETE);
-			delete.setRowKind(RowKind.DELETE);
-			out.collect(delete);
+		Field ddl = record.valueSchema().field("ddl");
+		if (ddl != null) {
+			Struct value = (Struct) record.value();
+			String binlogFile = (String) value.getStruct("source").get("file");
+			long binlogPos = (Long) value.getStruct("source").get("pos");
+			LOG.info("binlog file is: " + binlogFile + ", pos is: " + binlogPos + ", DDL is: " + value.get("ddl"));
 		} else {
-			GenericRowData before = extractBeforeRow(value, valueSchema);
-			validator.validate(before, RowKind.UPDATE_BEFORE);
-			before.setRowKind(RowKind.UPDATE_BEFORE);
-			out.collect(before);
+			Envelope.Operation op = Envelope.operationFor(record);
+			Struct value = (Struct) record.value();
+			Schema valueSchema = record.valueSchema();
+			if (op == Envelope.Operation.CREATE || op == Envelope.Operation.READ) {
+				GenericRowData insert = extractAfterRow(value, valueSchema);
+				validator.validate(insert, RowKind.INSERT);
+				insert.setRowKind(RowKind.INSERT);
+				out.collect(insert);
+			} else if (op == Envelope.Operation.DELETE) {
+				GenericRowData delete = extractBeforeRow(value, valueSchema);
+				validator.validate(delete, RowKind.DELETE);
+				delete.setRowKind(RowKind.DELETE);
+				out.collect(delete);
+			} else {
+				GenericRowData before = extractBeforeRow(value, valueSchema);
+				validator.validate(before, RowKind.UPDATE_BEFORE);
+				before.setRowKind(RowKind.UPDATE_BEFORE);
+				out.collect(before);
 
-			GenericRowData after = extractAfterRow(value, valueSchema);
-			validator.validate(after, RowKind.UPDATE_AFTER);
-			after.setRowKind(RowKind.UPDATE_AFTER);
-			out.collect(after);
+				GenericRowData after = extractAfterRow(value, valueSchema);
+				validator.validate(after, RowKind.UPDATE_AFTER);
+				after.setRowKind(RowKind.UPDATE_AFTER);
+				out.collect(after);
+			}
 		}
 	}
 

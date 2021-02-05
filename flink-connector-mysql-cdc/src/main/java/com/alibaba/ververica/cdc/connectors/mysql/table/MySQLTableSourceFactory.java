@@ -18,6 +18,7 @@
 
 package com.alibaba.ververica.cdc.connectors.mysql.table;
 
+import com.alibaba.ververica.cdc.connectors.mysql.options.MySQLOffsetOptions;
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.ConfigOptions;
 import org.apache.flink.configuration.ReadableConfig;
@@ -28,6 +29,7 @@ import org.apache.flink.table.factories.FactoryUtil;
 import org.apache.flink.table.utils.TableSchemaUtils;
 
 import com.alibaba.ververica.cdc.debezium.table.DebeziumOptions;
+import org.apache.flink.util.TimeUtils;
 
 import java.time.ZoneId;
 import java.util.HashSet;
@@ -85,6 +87,21 @@ public class MySQLTableSourceFactory implements DynamicTableSourceFactory {
 			"MySQL database cluster as another server (with this unique ID) so it can read the binlog. " +
 			"By default, a random number is generated between 5400 and 6400, though we recommend setting an explicit value.");
 
+	private static final ConfigOption<String> SOURCE_OFFSET_FILE = ConfigOptions.key("source-offset-file")
+			.stringType()
+			.noDefaultValue()
+			.withDescription("File Name of the MySQL binlog.");
+
+	private static final ConfigOption<Integer> SOURCE_OFFSET_POSITION = ConfigOptions.key("source-offset-pos")
+			.intType()
+			.noDefaultValue()
+			.withDescription("Position of the MySQL binlog.");
+
+	private static final ConfigOption<String> SOURCE_POS_LOGGING_INTERVAL = ConfigOptions.key("source-pos-logging-interval")
+			.stringType()
+			.defaultValue("10 min")
+			.withDescription("Binlog pos will be logged every 'binlog-logging-interval', default 10 minutes.");
+
 	@Override
 	public DynamicTableSource createDynamicTableSource(Context context) {
 		final FactoryUtil.TableFactoryHelper helper = FactoryUtil.createTableFactoryHelper(this, context);
@@ -99,6 +116,11 @@ public class MySQLTableSourceFactory implements DynamicTableSourceFactory {
 		int port = config.get(PORT);
 		Integer serverId = config.getOptional(SERVER_ID).orElse(null);
 		ZoneId serverTimeZone = ZoneId.of(config.get(SERVER_TIME_ZONE));
+		MySQLOffsetOptions.Builder builder = MySQLOffsetOptions.newBuilder();
+		builder.sourceOffsetFile(config.get(SOURCE_OFFSET_FILE))
+				.sourceOffsetPosition(config.getOptional(SOURCE_OFFSET_POSITION).orElse(null));
+		long sourcePosLoggingInterval =
+				TimeUtils.parseDuration(config.get(SOURCE_POS_LOGGING_INTERVAL)).toMinutes();
 		TableSchema physicalSchema = TableSchemaUtils.getPhysicalSchema(context.getCatalogTable().getSchema());
 
 		return new MySQLTableSource(
@@ -111,7 +133,9 @@ public class MySQLTableSourceFactory implements DynamicTableSourceFactory {
 			password,
 			serverTimeZone,
 			getDebeziumProperties(context.getCatalogTable().getOptions()),
-			serverId
+			serverId,
+			builder.build(),
+			sourcePosLoggingInterval
 		);
 	}
 
@@ -137,6 +161,9 @@ public class MySQLTableSourceFactory implements DynamicTableSourceFactory {
 		options.add(PORT);
 		options.add(SERVER_TIME_ZONE);
 		options.add(SERVER_ID);
+		options.add(SOURCE_OFFSET_FILE);
+		options.add(SOURCE_OFFSET_POSITION);
+		options.add(SOURCE_POS_LOGGING_INTERVAL);
 		return options;
 	}
 }

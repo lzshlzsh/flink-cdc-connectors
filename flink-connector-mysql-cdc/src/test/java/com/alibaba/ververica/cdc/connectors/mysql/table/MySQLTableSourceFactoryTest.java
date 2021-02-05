@@ -18,6 +18,7 @@
 
 package com.alibaba.ververica.cdc.connectors.mysql.table;
 
+import com.alibaba.ververica.cdc.connectors.mysql.options.MySQLOffsetOptions;
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.table.api.DataTypes;
@@ -77,7 +78,9 @@ public class MySQLTableSourceFactoryTest {
 			MY_PASSWORD,
 			ZoneId.of("UTC"),
 			PROPERTIES,
-			null
+			null,
+			MySQLOffsetOptions.newBuilder().build(),
+			3
 		);
 		assertEquals(expectedSource, actualSource);
 	}
@@ -103,7 +106,9 @@ public class MySQLTableSourceFactoryTest {
 			MY_PASSWORD,
 			ZoneId.of("Asia/Shanghai"),
 			dbzProperties,
-			4321
+			4321,
+			MySQLOffsetOptions.newBuilder().build(),
+			3
 		);
 		assertEquals(expectedSource, actualSource);
 	}

@@ -257,7 +257,7 @@ public class DebeziumSourceFunction<T> extends RichSourceFunction<T> implements
 		properties.setProperty("key.converter.schemas.enable", "false");
 		properties.setProperty("value.converter.schemas.enable", "false");
 		// DO NOT include schema change, e.g. DDL
-		properties.setProperty("include.schema.changes", "false");
+		properties.setProperty("include.schema.changes", "true");
 		// disable the offset flush totally
 		properties.setProperty("offset.flush.interval.ms", String.valueOf(Long.MAX_VALUE));
 		// disable tombstones
@@ -281,11 +281,14 @@ public class DebeziumSourceFunction<T> extends RichSourceFunction<T> implements
 			.map(t -> "\t" + t.getKey().toString() + " = " + t.getValue().toString() + "\n")
 			.collect(Collectors.joining());
 		LOG.info("Debezium Properties:\n{}", propsString);
+
+		int sourcePosLoggingInterval = Integer.valueOf(properties.getProperty("source-pos-logging-interval"));
 		this.debeziumConsumer = new DebeziumChangeConsumer<>(
 			sourceContext,
 			deserializer,
 			restoredOffsetState == null, // DB snapshot phase if restore state is null
-			this::reportError);
+			this::reportError,
+			sourcePosLoggingInterval);
 
 		// create the engine with this configuration ...
 		this.engine = DebeziumEngine.create(Connect.class)

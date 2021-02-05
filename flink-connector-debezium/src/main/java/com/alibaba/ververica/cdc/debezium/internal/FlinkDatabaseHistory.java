@@ -46,6 +46,7 @@ import java.util.function.Consumer;
 public class FlinkDatabaseHistory extends AbstractDatabaseHistory {
 
 	public static final String DATABASE_HISTORY_INSTANCE_NAME = "database.history.instance.name";
+	public static final String DATABASE_HISTORY_EXISTS = "database.history.exists";
 
 	/**
 	 * We will synchronize the records into Flink's state during snapshot.
@@ -64,6 +65,7 @@ public class FlinkDatabaseHistory extends AbstractDatabaseHistory {
 
 	private ConcurrentLinkedQueue<HistoryRecord> records;
 	private String instanceName;
+	private boolean databaseExists;
 
 	/**
 	 * Registers the given HistoryRecords into global variable under the given instance name,
@@ -104,6 +106,7 @@ public class FlinkDatabaseHistory extends AbstractDatabaseHistory {
 			throw new IllegalStateException(
 				String.format("Couldn't find engine instance %s in the global records.", instanceName));
 		}
+		this.databaseExists = config.getBoolean(DATABASE_HISTORY_EXISTS, true);
 	}
 
 	@Override
@@ -129,7 +132,7 @@ public class FlinkDatabaseHistory extends AbstractDatabaseHistory {
 
 	@Override
 	public boolean exists() {
-		return true;
+		return databaseExists;
 	}
 
 	@Override

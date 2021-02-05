@@ -39,6 +39,8 @@ import com.alibaba.ververica.cdc.connectors.utils.TestSourceContext;
 import com.alibaba.ververica.cdc.debezium.DebeziumDeserializationSchema;
 import com.alibaba.ververica.cdc.debezium.DebeziumSourceFunction;
 import com.jayway.jsonpath.JsonPath;
+import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Before;
 import org.junit.Test;
@@ -48,7 +50,9 @@ import java.sql.Connection;
 import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -112,6 +116,9 @@ public class MySQLSourceTest extends MySQLTestBase {
 			records = drain(sourceContext, 1);
 			assertInsert(records.get(0), "id", 1001);
 
+			statement.execute("alter table products modify description varchar(100)");
+			records = drain(sourceContext, 0);
+
 			// ---------------------------------------------------------------------------------------------------------------
 			// Changing the primary key of a row should result in 2 events: INSERT, DELETE (TOMBSTONE is dropped)
 			// ---------------------------------------------------------------------------------------------------------------
@@ -143,6 +150,16 @@ public class MySQLSourceTest extends MySQLTestBase {
 			source.close();
 			runThread.sync();
 		}
+	}
+
+	@Test
+	public void test() {
+
+		String str = "";
+		Map<String, String> map = new HashMap<>();
+		map.put("file", "123");
+		System.out.println(map);
+
 	}
 
 	@Test
@@ -431,7 +448,15 @@ public class MySQLSourceTest extends MySQLTestBase {
 
 		@Override
 		public void deserialize(SourceRecord record, Collector<SourceRecord> out) throws Exception {
-			out.collect(record);
+			Field ddl = record.valueSchema().field("ddl");
+			if (ddl != null) {
+				Struct value = (Struct) record.value();
+				String binlogFile = (String) value.getStruct("source").get("file");
+				Long binlogPos = (Long) value.getStruct("source").get("pos");
+				System.out.println(binlogFile + " " + binlogPos + " " + value.get("ddl"));
+			} else {
+				out.collect(record);
+			}
 		}
 
 		@Override
