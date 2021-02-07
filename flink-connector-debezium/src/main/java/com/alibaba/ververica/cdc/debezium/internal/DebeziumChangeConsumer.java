@@ -76,6 +76,7 @@ public class DebeziumChangeConsumer<T> implements DebeziumEngine.ChangeConsumer<
 
 	private boolean lockHold = false;
 
+	private String tableWhiteList;
 	private volatile Map<String, ?> binlogFile;
 	private volatile Map<String, ?> pos;
 	private ScheduledExecutorService scheduler;
@@ -87,7 +88,8 @@ public class DebeziumChangeConsumer<T> implements DebeziumEngine.ChangeConsumer<
 			DebeziumDeserializationSchema<T> deserialization,
 			boolean isInDbSnapshotPhase,
 			ErrorReporter errorReporter,
-			long binlogLoggingIntervalMinutes) {
+			long binlogLoggingIntervalMinutes,
+			String tableWhiteList) {
 		this.sourceContext = sourceContext;
 		this.checkpointLock = sourceContext.getCheckpointLock();
 		this.deserialization = deserialization;
@@ -97,11 +99,12 @@ public class DebeziumChangeConsumer<T> implements DebeziumEngine.ChangeConsumer<
 		this.debeziumState = new DebeziumState();
 		this.stateSerializer = new DebeziumStateSerializer();
 		this.binlogLoggingInterval = binlogLoggingIntervalMinutes;
+		this.tableWhiteList = tableWhiteList;
 		this.scheduler = Executors.newScheduledThreadPool(1, new ExecutorThreadFactory("binlog-pos-logging"));
 
 		this.scheduler.scheduleAtFixedRate(
 				() -> {
-					LOG.info("Binlog pos info: {}, {}", binlogFile, pos); },
+					LOG.info("Binlog pos info: {}, {}, {}", tableWhiteList, binlogFile, pos); },
 				this.binlogLoggingInterval,
 				this.binlogLoggingInterval, TimeUnit.MINUTES
 		);

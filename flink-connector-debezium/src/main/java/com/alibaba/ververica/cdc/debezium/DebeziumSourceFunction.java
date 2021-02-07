@@ -283,12 +283,15 @@ public class DebeziumSourceFunction<T> extends RichSourceFunction<T> implements
 		LOG.info("Debezium Properties:\n{}", propsString);
 
 		long sourcePosLoggingInterval = (Long) properties.get("source-pos-logging-interval");
+		String tableWhitelist = (String) properties.get("table.whitelist");
+
 		this.debeziumConsumer = new DebeziumChangeConsumer<>(
 			sourceContext,
 			deserializer,
 			restoredOffsetState == null, // DB snapshot phase if restore state is null
 			this::reportError,
-			sourcePosLoggingInterval);
+			sourcePosLoggingInterval,
+			tableWhitelist);
 
 		// create the engine with this configuration ...
 		this.engine = DebeziumEngine.create(Connect.class)
