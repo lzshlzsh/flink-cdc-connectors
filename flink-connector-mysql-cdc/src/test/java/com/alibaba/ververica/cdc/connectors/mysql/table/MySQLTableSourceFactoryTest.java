@@ -18,7 +18,6 @@
 
 package com.alibaba.ververica.cdc.connectors.mysql.table;
 
-import com.alibaba.ververica.cdc.connectors.mysql.options.MySQLOffsetOptions;
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.table.api.DataTypes;
@@ -31,6 +30,7 @@ import org.apache.flink.table.factories.FactoryUtil;
 import org.apache.flink.table.utils.TableSchemaUtils;
 import org.apache.flink.util.ExceptionUtils;
 
+import com.alibaba.ververica.cdc.connectors.mysql.options.MySQLOffsetOptions;
 import org.junit.Test;
 
 import java.time.ZoneId;

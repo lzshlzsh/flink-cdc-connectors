@@ -18,12 +18,13 @@
 
 package com.alibaba.ververica.cdc.connectors.mysql;
 
+import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.alibaba.ververica.cdc.debezium.DebeziumDeserializationSchema;
 import com.alibaba.ververica.cdc.debezium.DebeziumSourceFunction;
 import com.alibaba.ververica.cdc.debezium.internal.DebeziumState;
 import com.alibaba.ververica.cdc.debezium.internal.FlinkOffsetBackingStore;
 import io.debezium.connector.mysql.MySqlConnector;
-import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.util.HashMap;

@@ -18,7 +18,6 @@
 
 package com.alibaba.ververica.cdc.connectors.mysql.table;
 
-import com.alibaba.ververica.cdc.connectors.mysql.options.MySQLOffsetOptions;
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.ConfigOptions;
 import org.apache.flink.configuration.ReadableConfig;
@@ -27,9 +26,10 @@ import org.apache.flink.table.connector.source.DynamicTableSource;
 import org.apache.flink.table.factories.DynamicTableSourceFactory;
 import org.apache.flink.table.factories.FactoryUtil;
 import org.apache.flink.table.utils.TableSchemaUtils;
-
-import com.alibaba.ververica.cdc.debezium.table.DebeziumOptions;
 import org.apache.flink.util.TimeUtils;
+
+import com.alibaba.ververica.cdc.connectors.mysql.options.MySQLOffsetOptions;
+import com.alibaba.ververica.cdc.debezium.table.DebeziumOptions;
 
 import java.time.ZoneId;
 import java.util.HashSet;
