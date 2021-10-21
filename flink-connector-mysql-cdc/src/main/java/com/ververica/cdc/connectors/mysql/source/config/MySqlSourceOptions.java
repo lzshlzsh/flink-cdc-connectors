@@ -151,4 +151,10 @@ public class MySqlSourceOptions {
                     .noDefaultValue()
                     .withDescription(
                             "Optional timestamp used in case of \"timestamp\" startup mode");
+
+    public static final ConfigOption<Boolean> APPEND_MODE =
+            ConfigOptions.key("append-mode")
+                    .booleanType()
+                    .defaultValue(false)
+                    .withDescription("Whether works as append source.");
 }

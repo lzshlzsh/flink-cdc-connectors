@@ -110,7 +110,8 @@ public class MySqlTableSourceFactoryTest {
                         SCAN_INCREMENTAL_SNAPSHOT_CHUNK_SIZE.defaultValue(),
                         SCAN_SNAPSHOT_FETCH_SIZE.defaultValue(),
                         CONNECT_TIMEOUT.defaultValue(),
-                        StartupOptions.initial());
+                        StartupOptions.initial(),
+                        false);
         assertEquals(expectedSource, actualSource);
     }
 
@@ -141,7 +142,8 @@ public class MySqlTableSourceFactoryTest {
                         8000,
                         100,
                         Duration.ofSeconds(45),
-                        StartupOptions.initial());
+                        StartupOptions.initial(),
+                        false);
         assertEquals(expectedSource, actualSource);
     }
 
@@ -172,7 +174,8 @@ public class MySqlTableSourceFactoryTest {
                         8000,
                         100,
                         Duration.ofSeconds(45),
-                        StartupOptions.initial());
+                        StartupOptions.initial(),
+                        false);
         assertEquals(expectedSource, actualSource);
     }
 
@@ -201,7 +204,8 @@ public class MySqlTableSourceFactoryTest {
                         SCAN_INCREMENTAL_SNAPSHOT_CHUNK_SIZE.defaultValue(),
                         SCAN_SNAPSHOT_FETCH_SIZE.defaultValue(),
                         CONNECT_TIMEOUT.defaultValue(),
-                        StartupOptions.latest());
+                        StartupOptions.latest(),
+                        false);
         assertEquals(expectedSource, actualSource);
     }
 
@@ -232,7 +236,8 @@ public class MySqlTableSourceFactoryTest {
                         SCAN_INCREMENTAL_SNAPSHOT_CHUNK_SIZE.defaultValue(),
                         SCAN_SNAPSHOT_FETCH_SIZE.defaultValue(),
                         CONNECT_TIMEOUT.defaultValue(),
-                        StartupOptions.initial());
+                        StartupOptions.initial(),
+                        false);
         assertEquals(expectedSource, actualSource);
     }
 
@@ -283,7 +288,8 @@ public class MySqlTableSourceFactoryTest {
                         SCAN_INCREMENTAL_SNAPSHOT_CHUNK_SIZE.defaultValue(),
                         SCAN_SNAPSHOT_FETCH_SIZE.defaultValue(),
                         CONNECT_TIMEOUT.defaultValue(),
-                        StartupOptions.initial());
+                        StartupOptions.initial(),
+                        false);
         assertEquals(expectedSource, actualSource);
     }
 
@@ -343,7 +349,8 @@ public class MySqlTableSourceFactoryTest {
                         SCAN_INCREMENTAL_SNAPSHOT_CHUNK_SIZE.defaultValue(),
                         SCAN_SNAPSHOT_FETCH_SIZE.defaultValue(),
                         CONNECT_TIMEOUT.defaultValue(),
-                        StartupOptions.latest());
+                        StartupOptions.latest(),
+                        false);
         assertEquals(expectedSource, actualSource);
     }
 
@@ -376,7 +383,8 @@ public class MySqlTableSourceFactoryTest {
                         SCAN_INCREMENTAL_SNAPSHOT_CHUNK_SIZE.defaultValue(),
                         SCAN_SNAPSHOT_FETCH_SIZE.defaultValue(),
                         CONNECT_TIMEOUT.defaultValue(),
-                        StartupOptions.initial());
+                        StartupOptions.initial(),
+                        false);
         expectedSource.producedDataType = SCHEMA_WITH_METADATA.toSourceRowDataType();
         expectedSource.metadataKeys = Arrays.asList("op_ts", "database_name");
 

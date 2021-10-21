@@ -91,6 +91,9 @@ public final class RowDataDebeziumDeserializeSchema
     /** Validator to validate the row value. */
     private final ValueValidator validator;
 
+    /** Whether works append source. */
+    private final boolean appendSource;
+
     /** Returns a builder to build {@link RowDataDebeziumDeserializeSchema}. */
     public static Builder newBuilder() {
         return new Builder();
@@ -101,13 +104,15 @@ public final class RowDataDebeziumDeserializeSchema
             MetadataConverter[] metadataConverters,
             TypeInformation<RowData> resultTypeInfo,
             ValueValidator validator,
-            ZoneId serverTimeZone) {
+            ZoneId serverTimeZone,
+            boolean appendSource) {
         this.hasMetadata = checkNotNull(metadataConverters).length > 0;
         this.appendMetadataCollector = new AppendMetadataCollector(metadataConverters);
         this.physicalConverter = createConverter(checkNotNull(physicalDataType));
         this.resultTypeInfo = checkNotNull(resultTypeInfo);
         this.validator = checkNotNull(validator);
         this.serverTimeZone = checkNotNull(serverTimeZone);
+        this.appendSource = checkNotNull(appendSource);
     }
 
     @Override
@@ -126,10 +131,12 @@ public final class RowDataDebeziumDeserializeSchema
             delete.setRowKind(RowKind.DELETE);
             emit(record, delete, out);
         } else {
-            GenericRowData before = extractBeforeRow(value, valueSchema);
-            validator.validate(before, RowKind.UPDATE_BEFORE);
-            before.setRowKind(RowKind.UPDATE_BEFORE);
-            emit(record, before, out);
+            if (!appendSource) {
+                GenericRowData before = extractBeforeRow(value, valueSchema);
+                validator.validate(before, RowKind.UPDATE_BEFORE);
+                before.setRowKind(RowKind.UPDATE_BEFORE);
+                emit(record, before, out);
+            }
 
             GenericRowData after = extractAfterRow(value, valueSchema);
             validator.validate(after, RowKind.UPDATE_AFTER);
@@ -151,6 +158,9 @@ public final class RowDataDebeziumDeserializeSchema
     }
 
     private void emit(SourceRecord inRecord, RowData physicalRow, Collector<RowData> collector) {
+        if (appendSource) {
+            physicalRow.setRowKind(RowKind.INSERT);
+        }
         if (!hasMetadata) {
             collector.collect(physicalRow);
             return;
@@ -177,6 +187,7 @@ public final class RowDataDebeziumDeserializeSchema
         private MetadataConverter[] metadataConverters = new MetadataConverter[0];
         private ValueValidator validator = (rowData, rowKind) -> {};
         private ZoneId serverTimeZone = ZoneId.of("UTC");
+        private boolean appendSource = false;
 
         public Builder setPhysicalRowType(RowType physicalRowType) {
             this.physicalRowType = physicalRowType;
@@ -203,9 +214,19 @@ public final class RowDataDebeziumDeserializeSchema
             return this;
         }
 
+        public Builder setAppendSource(boolean appendSource) {
+            this.appendSource = appendSource;
+            return this;
+        }
+
         public RowDataDebeziumDeserializeSchema build() {
             return new RowDataDebeziumDeserializeSchema(
-                    physicalRowType, metadataConverters, resultTypeInfo, validator, serverTimeZone);
+                    physicalRowType,
+                    metadataConverters,
+                    resultTypeInfo,
+                    validator,
+                    serverTimeZone,
+                    appendSource);
         }
     }
 

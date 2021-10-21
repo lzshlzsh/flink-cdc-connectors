@@ -73,6 +73,7 @@ public class MySqlTableSource implements ScanTableSource, SupportsReadingMetadat
     private final int fetchSize;
     private final Duration connectTimeout;
     private final StartupOptions startupOptions;
+    private final boolean appendSource;
 
     // --------------------------------------------------------------------------------------------
     // Mutable attributes
@@ -99,7 +100,8 @@ public class MySqlTableSource implements ScanTableSource, SupportsReadingMetadat
             int splitSize,
             int fetchSize,
             Duration connectTimeout,
-            StartupOptions startupOptions) {
+            StartupOptions startupOptions,
+            boolean appendSource) {
         this.physicalSchema = physicalSchema;
         this.port = port;
         this.hostname = checkNotNull(hostname);
@@ -115,6 +117,7 @@ public class MySqlTableSource implements ScanTableSource, SupportsReadingMetadat
         this.fetchSize = fetchSize;
         this.connectTimeout = connectTimeout;
         this.startupOptions = startupOptions;
+        this.appendSource = appendSource;
         // Mutable attributes
         this.producedDataType = physicalSchema.toPhysicalRowDataType();
         this.metadataKeys = Collections.emptyList();
@@ -122,19 +125,21 @@ public class MySqlTableSource implements ScanTableSource, SupportsReadingMetadat
 
     @Override
     public ChangelogMode getChangelogMode() {
-        return ChangelogMode.newBuilder()
-                .addContainedKind(RowKind.INSERT)
-                .addContainedKind(RowKind.UPDATE_BEFORE)
-                .addContainedKind(RowKind.UPDATE_AFTER)
-                .addContainedKind(RowKind.DELETE)
-                .build();
+        final ChangelogMode.Builder builder =
+                ChangelogMode.newBuilder().addContainedKind(RowKind.INSERT);
+        if (!appendSource) {
+            builder.addContainedKind(RowKind.UPDATE_BEFORE)
+                    .addContainedKind(RowKind.UPDATE_AFTER)
+                    .addContainedKind(RowKind.DELETE);
+        }
+        return builder.build();
     }
 
     @Override
     public ScanRuntimeProvider getScanRuntimeProvider(ScanContext scanContext) {
         RowType physicalDataType =
                 (RowType) physicalSchema.toPhysicalRowDataType().getLogicalType();
-        MetadataConverter[] metadataConverters = getMetadataConverters();
+        MetadataConverter[] metadataConverters = getMetadataConverters(physicalDataType);
         final TypeInformation<RowData> typeInfo =
                 scanContext.createTypeInformation(producedDataType);
 
@@ -144,6 +149,7 @@ public class MySqlTableSource implements ScanTableSource, SupportsReadingMetadat
                         .setMetadataConverters(metadataConverters)
                         .setResultTypeInfo(typeInfo)
                         .setServerTimeZone(serverTimeZone)
+                        .setAppendSource(appendSource)
                         .build();
         if (enableParallelRead) {
             MySqlSource<RowData> parallelSource =
@@ -184,7 +190,7 @@ public class MySqlTableSource implements ScanTableSource, SupportsReadingMetadat
         }
     }
 
-    protected MetadataConverter[] getMetadataConverters() {
+    protected MetadataConverter[] getMetadataConverters(RowType physicalDataType) {
         if (metadataKeys.isEmpty()) {
             return new MetadataConverter[0];
         }
@@ -196,7 +202,11 @@ public class MySqlTableSource implements ScanTableSource, SupportsReadingMetadat
                                         .filter(m -> m.getKey().equals(key))
                                         .findFirst()
                                         .orElseThrow(IllegalStateException::new))
-                .map(MySqlReadableMetadata::getConverter)
+                .map(
+                        m ->
+                                m == MySqlReadableMetadata.OLD
+                                        ? new OldFieldMetadataConverter(physicalDataType)
+                                        : m.getConverter())
                 .toArray(MetadataConverter[]::new);
     }
 
@@ -232,7 +242,8 @@ public class MySqlTableSource implements ScanTableSource, SupportsReadingMetadat
                         splitSize,
                         fetchSize,
                         connectTimeout,
-                        startupOptions);
+                        startupOptions,
+                        appendSource);
         source.metadataKeys = metadataKeys;
         source.producedDataType = producedDataType;
         return source;
@@ -243,7 +254,7 @@ public class MySqlTableSource implements ScanTableSource, SupportsReadingMetadat
         if (this == o) {
             return true;
         }
-        if (!(o instanceof MySqlTableSource)) {
+        if (o == null || getClass() != o.getClass()) {
             return false;
         }
         MySqlTableSource that = (MySqlTableSource) o;
@@ -251,6 +262,7 @@ public class MySqlTableSource implements ScanTableSource, SupportsReadingMetadat
                 && enableParallelRead == that.enableParallelRead
                 && splitSize == that.splitSize
                 && fetchSize == that.fetchSize
+                && appendSource == that.appendSource
                 && Objects.equals(physicalSchema, that.physicalSchema)
                 && Objects.equals(hostname, that.hostname)
                 && Objects.equals(database, that.database)
@@ -284,6 +296,7 @@ public class MySqlTableSource implements ScanTableSource, SupportsReadingMetadat
                 fetchSize,
                 connectTimeout,
                 startupOptions,
+                appendSource,
                 producedDataType,
                 metadataKeys);
     }

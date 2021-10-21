@@ -37,6 +37,7 @@ import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.Set;
 
+import static com.ververica.cdc.connectors.mysql.source.config.MySqlSourceOptions.APPEND_MODE;
 import static com.ververica.cdc.connectors.mysql.source.config.MySqlSourceOptions.CONNECT_TIMEOUT;
 import static com.ververica.cdc.connectors.mysql.source.config.MySqlSourceOptions.DATABASE_NAME;
 import static com.ververica.cdc.connectors.mysql.source.config.MySqlSourceOptions.HOSTNAME;
@@ -90,6 +91,7 @@ public class MySqlTableSourceFactory implements DynamicTableSourceFactory {
             validateSplitSize(splitSize);
         }
         Duration connectTimeout = config.get(CONNECT_TIMEOUT);
+        final boolean appendSource = config.get(APPEND_MODE);
 
         return new MySqlTableSource(
                 physicalSchema,
@@ -106,7 +108,8 @@ public class MySqlTableSourceFactory implements DynamicTableSourceFactory {
                 splitSize,
                 fetchSize,
                 connectTimeout,
-                startupOptions);
+                startupOptions,
+                appendSource);
     }
 
     @Override
@@ -139,6 +142,7 @@ public class MySqlTableSourceFactory implements DynamicTableSourceFactory {
         options.add(SCAN_INCREMENTAL_SNAPSHOT_CHUNK_SIZE);
         options.add(SCAN_SNAPSHOT_FETCH_SIZE);
         options.add(CONNECT_TIMEOUT);
+        options.add(APPEND_MODE);
         return options;
     }
 

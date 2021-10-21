@@ -80,6 +80,76 @@ public enum MySqlReadableMetadata {
                     return TimestampData.fromEpochMillis(
                             (Long) sourceStruct.get(AbstractSourceInfo.TIMESTAMP_KEY));
                 }
+            }),
+
+    /** Operation type, INSERT/UPDATE/DELETE. */
+    OP_TYPE(
+            "op_type",
+            DataTypes.STRING().notNull(),
+            new MetadataConverter() {
+                private static final long serialVersionUID = 1L;
+
+                @Override
+                public Object read(SourceRecord record) {
+                    final Envelope.Operation op = Envelope.operationFor(record);
+                    if (op == Envelope.Operation.CREATE || op == Envelope.Operation.READ) {
+                        return StringData.fromString("INSERT");
+                    } else if (op == Envelope.Operation.DELETE) {
+                        return StringData.fromString("DELETE");
+                    } else {
+                        return StringData.fromString("UPDATE");
+                    }
+                }
+            }),
+
+    /** Not important, a simple increment counter. */
+    BATCH_ID(
+            "batch_id",
+            DataTypes.BIGINT().nullable(),
+            new MetadataConverter() {
+                private static final long serialVersionUID = 1L;
+
+                private long id = 0;
+
+                @Override
+                public Object read(SourceRecord record) {
+                    return id++;
+                }
+            }),
+
+    /** Source does not emit ddl data. */
+    IS_DDL(
+            "is_ddl",
+            DataTypes.BOOLEAN().notNull(),
+            new MetadataConverter() {
+                private static final long serialVersionUID = 1L;
+
+                @Override
+                public Object read(SourceRecord record) {
+                    return false;
+                }
+            }),
+
+    /** The update-before data for UPDATE record. */
+    OLD(
+            "update_before",
+            DataTypes.ARRAY(
+                            DataTypes.MAP(
+                                            DataTypes.STRING().nullable(),
+                                            DataTypes.STRING().nullable())
+                                    .nullable())
+                    .nullable(),
+            new MetadataConverter() {
+                private static final long serialVersionUID = 1L;
+
+                @Override
+                public Object read(SourceRecord record) {
+                    final Envelope.Operation op = Envelope.operationFor(record);
+                    if (op != Envelope.Operation.UPDATE) {
+                        return null;
+                    }
+                    return record;
+                }
             });
 
     private final String key;
