@@ -42,7 +42,7 @@ import java.util.Map;
 public enum MySqlReadableMetadata {
     /** Name of the table that contain the row. . */
     TABLE_NAME(
-            "table_name",
+            "meta.table_name",
             DataTypes.STRING().notNull(),
             new MetadataConverter() {
                 private static final long serialVersionUID = 1L;
@@ -58,7 +58,7 @@ public enum MySqlReadableMetadata {
 
     /** Name of the database that contain the row. */
     DATABASE_NAME(
-            "database_name",
+            "meta.database_name",
             DataTypes.STRING().notNull(),
             new MetadataConverter() {
                 private static final long serialVersionUID = 1L;
@@ -77,7 +77,7 @@ public enum MySqlReadableMetadata {
      * snapshot of the table instead of the binlog, the value is always 0.
      */
     OP_TS(
-            "op_ts",
+            "meta.op_ts",
             DataTypes.TIMESTAMP_WITH_LOCAL_TIME_ZONE(3).notNull(),
             new MetadataConverter() {
                 private static final long serialVersionUID = 1L;
@@ -93,7 +93,7 @@ public enum MySqlReadableMetadata {
 
     /** Operation type, INSERT/UPDATE/DELETE. */
     OP_TYPE(
-            "op_type",
+            "meta.op_type",
             DataTypes.STRING().notNull(),
             new MetadataConverter() {
                 private static final long serialVersionUID = 1L;
@@ -113,7 +113,7 @@ public enum MySqlReadableMetadata {
 
     /** Not important, a simple increment counter. */
     BATCH_ID(
-            "batch_id",
+            "meta.batch_id",
             DataTypes.BIGINT().nullable(),
             new MetadataConverter() {
                 private static final long serialVersionUID = 1L;
@@ -128,7 +128,7 @@ public enum MySqlReadableMetadata {
 
     /** Source does not emit ddl data. */
     IS_DDL(
-            "is_ddl",
+            "meta.is_ddl",
             DataTypes.BOOLEAN().notNull(),
             new MetadataConverter() {
                 private static final long serialVersionUID = 1L;
@@ -141,7 +141,7 @@ public enum MySqlReadableMetadata {
 
     /** The update-before data for UPDATE record. */
     OLD(
-            "update_before",
+            "meta.update_before",
             DataTypes.ARRAY(
                             DataTypes.MAP(
                                             DataTypes.STRING().nullable(),
@@ -162,7 +162,7 @@ public enum MySqlReadableMetadata {
             }),
 
     MYSQL_TYPE(
-            "mysql_type",
+            "meta.mysql_type",
             DataTypes.MAP(DataTypes.STRING().nullable(), DataTypes.STRING().nullable()).nullable(),
             new MetadataConverter() {
                 private static final long serialVersionUID = 1L;
@@ -197,7 +197,7 @@ public enum MySqlReadableMetadata {
             }),
 
     PK_NAMES(
-            "pk_names",
+            "meta.pk_names",
             DataTypes.ARRAY(DataTypes.STRING().nullable()).nullable(),
             new MetadataConverter() {
                 private static final long serialVersionUID = 1L;
@@ -221,7 +221,7 @@ public enum MySqlReadableMetadata {
             }),
 
     SQL(
-            "sql",
+            "meta.sql",
             DataTypes.STRING().nullable(),
             new MetadataConverter() {
                 private static final long serialVersionUID = 1L;
@@ -233,7 +233,7 @@ public enum MySqlReadableMetadata {
             }),
 
     SQL_TYPE(
-            "sql_type",
+            "meta.sql_type",
             DataTypes.MAP(DataTypes.STRING().nullable(), DataTypes.INT().nullable()).nullable(),
             new MetadataConverter() {
                 private static final long serialVersionUID = 1L;
@@ -264,7 +264,7 @@ public enum MySqlReadableMetadata {
             }),
 
     TS(
-            "ts",
+            "meta.ts",
             DataTypes.TIMESTAMP_WITH_LOCAL_TIME_ZONE(3).notNull(),
             new MetadataConverter() {
                 private static final long serialVersionUID = 1L;
