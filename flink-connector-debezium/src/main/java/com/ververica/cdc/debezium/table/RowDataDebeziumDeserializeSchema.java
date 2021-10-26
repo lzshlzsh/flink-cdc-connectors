@@ -35,6 +35,7 @@ import com.ververica.cdc.debezium.utils.TemporalConversions;
 import io.debezium.data.Envelope;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VariableScaleDecimal;
+import io.debezium.relational.history.TableChanges;
 import io.debezium.time.MicroTime;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.NanoTime;
@@ -45,6 +46,8 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+
+import javax.annotation.Nullable;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -117,6 +120,15 @@ public final class RowDataDebeziumDeserializeSchema
 
     @Override
     public void deserialize(SourceRecord record, Collector<RowData> out) throws Exception {
+        deserialize(record, out, null);
+    }
+
+    @Override
+    public void deserialize(
+            SourceRecord record,
+            Collector<RowData> out,
+            @Nullable TableChanges.TableChange tableSchema)
+            throws Exception {
         Envelope.Operation op = Envelope.operationFor(record);
         Struct value = (Struct) record.value();
         Schema valueSchema = record.valueSchema();
@@ -124,24 +136,24 @@ public final class RowDataDebeziumDeserializeSchema
             GenericRowData insert = extractAfterRow(value, valueSchema);
             validator.validate(insert, RowKind.INSERT);
             insert.setRowKind(RowKind.INSERT);
-            emit(record, insert, out);
+            emit(record, insert, tableSchema, out);
         } else if (op == Envelope.Operation.DELETE) {
             GenericRowData delete = extractBeforeRow(value, valueSchema);
             validator.validate(delete, RowKind.DELETE);
             delete.setRowKind(RowKind.DELETE);
-            emit(record, delete, out);
+            emit(record, delete, tableSchema, out);
         } else {
             if (!appendSource) {
                 GenericRowData before = extractBeforeRow(value, valueSchema);
                 validator.validate(before, RowKind.UPDATE_BEFORE);
                 before.setRowKind(RowKind.UPDATE_BEFORE);
-                emit(record, before, out);
+                emit(record, before, tableSchema, out);
             }
 
             GenericRowData after = extractAfterRow(value, valueSchema);
             validator.validate(after, RowKind.UPDATE_AFTER);
             after.setRowKind(RowKind.UPDATE_AFTER);
-            emit(record, after, out);
+            emit(record, after, tableSchema, out);
         }
     }
 
@@ -157,7 +169,11 @@ public final class RowDataDebeziumDeserializeSchema
         return (GenericRowData) physicalConverter.convert(before, beforeSchema);
     }
 
-    private void emit(SourceRecord inRecord, RowData physicalRow, Collector<RowData> collector) {
+    private void emit(
+            SourceRecord inRecord,
+            RowData physicalRow,
+            @Nullable TableChanges.TableChange tableSchema,
+            Collector<RowData> collector) {
         if (appendSource) {
             physicalRow.setRowKind(RowKind.INSERT);
         }
@@ -168,7 +184,7 @@ public final class RowDataDebeziumDeserializeSchema
 
         appendMetadataCollector.inputRecord = inRecord;
         appendMetadataCollector.outputCollector = collector;
-        appendMetadataCollector.collect(physicalRow);
+        appendMetadataCollector.collect(physicalRow, tableSchema);
     }
 
     @Override

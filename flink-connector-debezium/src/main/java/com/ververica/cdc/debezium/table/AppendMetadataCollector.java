@@ -24,7 +24,10 @@ import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.utils.JoinedRowData;
 import org.apache.flink.util.Collector;
 
+import io.debezium.relational.history.TableChanges;
 import org.apache.kafka.connect.source.SourceRecord;
+
+import javax.annotation.Nullable;
 
 import java.io.Serializable;
 
@@ -44,9 +47,13 @@ public final class AppendMetadataCollector implements Collector<RowData>, Serial
 
     @Override
     public void collect(RowData physicalRow) {
+        collect(physicalRow, null);
+    }
+
+    public void collect(RowData physicalRow, @Nullable TableChanges.TableChange tableSchema) {
         GenericRowData metaRow = new GenericRowData(metadataConverters.length);
         for (int i = 0; i < metadataConverters.length; i++) {
-            Object meta = metadataConverters[i].read(inputRecord);
+            Object meta = metadataConverters[i].read(inputRecord, tableSchema);
             metaRow.setField(i, meta);
         }
         RowData outRow = new JoinedRowData(physicalRow.getRowKind(), physicalRow, metaRow);

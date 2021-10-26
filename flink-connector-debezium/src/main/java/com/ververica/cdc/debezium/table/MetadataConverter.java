@@ -20,7 +20,10 @@ package com.ververica.cdc.debezium.table;
 
 import org.apache.flink.annotation.Internal;
 
+import io.debezium.relational.history.TableChanges;
 import org.apache.kafka.connect.source.SourceRecord;
+
+import javax.annotation.Nullable;
 
 import java.io.Serializable;
 
@@ -29,4 +32,8 @@ import java.io.Serializable;
 @Internal
 public interface MetadataConverter extends Serializable {
     Object read(SourceRecord record);
+
+    default Object read(SourceRecord record, @Nullable TableChanges.TableChange tableSchema) {
+        return read(record);
+    }
 }

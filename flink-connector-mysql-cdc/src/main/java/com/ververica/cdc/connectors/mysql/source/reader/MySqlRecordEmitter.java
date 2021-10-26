@@ -27,6 +27,7 @@ import com.ververica.cdc.connectors.mysql.source.offset.BinlogOffset;
 import com.ververica.cdc.connectors.mysql.source.split.MySqlSplitState;
 import com.ververica.cdc.debezium.DebeziumDeserializationSchema;
 import io.debezium.document.Array;
+import io.debezium.relational.TableId;
 import io.debezium.relational.history.HistoryRecord;
 import io.debezium.relational.history.JsonTableChangeSerializer;
 import io.debezium.relational.history.TableChanges;
@@ -34,10 +35,15 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
+
+import java.util.Map;
+
 import static com.ververica.cdc.connectors.mysql.source.utils.RecordUtils.getBinlogPosition;
 import static com.ververica.cdc.connectors.mysql.source.utils.RecordUtils.getFetchTimestamp;
 import static com.ververica.cdc.connectors.mysql.source.utils.RecordUtils.getHistoryRecord;
 import static com.ververica.cdc.connectors.mysql.source.utils.RecordUtils.getMessageTimestamp;
+import static com.ververica.cdc.connectors.mysql.source.utils.RecordUtils.getTableId;
 import static com.ververica.cdc.connectors.mysql.source.utils.RecordUtils.getWatermark;
 import static com.ververica.cdc.connectors.mysql.source.utils.RecordUtils.isDataChangeRecord;
 import static com.ververica.cdc.connectors.mysql.source.utils.RecordUtils.isHighWatermarkEvent;
@@ -97,7 +103,13 @@ public final class MySqlRecordEmitter<T>
                 splitState.asBinlogSplitState().setStartingOffset(position);
             }
             reportMetrics(element);
-            emitElement(element, output);
+
+            final Map<TableId, TableChanges.TableChange> tableSchemas =
+                    splitState.toMySqlSplit().getTableSchemas();
+            final TableChanges.TableChange tableSchema =
+                    tableSchemas.getOrDefault(getTableId(element), null);
+
+            emitElement(element, output, tableSchema);
         } else {
             // unknown element
             LOG.info("Meet unknown element {}, just skip.", element);
@@ -105,8 +117,16 @@ public final class MySqlRecordEmitter<T>
     }
 
     private void emitElement(SourceRecord element, SourceOutput<T> output) throws Exception {
+        emitElement(element, output, null);
+    }
+
+    private void emitElement(
+            SourceRecord element,
+            SourceOutput<T> output,
+            @Nullable TableChanges.TableChange tableSchema)
+            throws Exception {
         outputCollector.output = output;
-        debeziumDeserializationSchema.deserialize(element, outputCollector);
+        debeziumDeserializationSchema.deserialize(element, outputCollector, tableSchema);
     }
 
     private void reportMetrics(SourceRecord element) {

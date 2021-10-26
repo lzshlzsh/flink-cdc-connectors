@@ -19,6 +19,8 @@
 package com.ververica.cdc.connectors.mysql.table;
 
 import org.apache.flink.table.api.DataTypes;
+import org.apache.flink.table.data.GenericArrayData;
+import org.apache.flink.table.data.GenericMapData;
 import org.apache.flink.table.data.StringData;
 import org.apache.flink.table.data.TimestampData;
 import org.apache.flink.table.types.DataType;
@@ -26,8 +28,15 @@ import org.apache.flink.table.types.DataType;
 import com.ververica.cdc.debezium.table.MetadataConverter;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
+import io.debezium.relational.Table;
+import io.debezium.relational.history.TableChanges;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+
+import javax.annotation.Nullable;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /** Defines the supported metadata columns for {@link MySqlTableSource}. */
 public enum MySqlReadableMetadata {
@@ -149,6 +158,122 @@ public enum MySqlReadableMetadata {
                         return null;
                     }
                     return record;
+                }
+            }),
+
+    MYSQL_TYPE(
+            "mysql_type",
+            DataTypes.MAP(DataTypes.STRING().nullable(), DataTypes.STRING().nullable()).nullable(),
+            new MetadataConverter() {
+                private static final long serialVersionUID = 1L;
+
+                @Override
+                public Object read(SourceRecord record) {
+                    return null;
+                }
+
+                @Override
+                public Object read(
+                        SourceRecord record, @Nullable TableChanges.TableChange tableSchema) {
+                    if (tableSchema == null) {
+                        return null;
+                    }
+                    Map<StringData, StringData> mysqlType = new HashMap<>();
+                    final Table table = tableSchema.getTable();
+                    table.columns()
+                            .forEach(
+                                    column -> {
+                                        mysqlType.put(
+                                                StringData.fromString(column.name()),
+                                                StringData.fromString(
+                                                        String.format(
+                                                                "%s(%d)",
+                                                                column.typeName(),
+                                                                column.length())));
+                                    });
+
+                    return new GenericMapData(mysqlType);
+                }
+            }),
+
+    PK_NAMES(
+            "pk_names",
+            DataTypes.ARRAY(DataTypes.STRING().nullable()).nullable(),
+            new MetadataConverter() {
+                private static final long serialVersionUID = 1L;
+
+                @Override
+                public Object read(SourceRecord record) {
+                    return null;
+                }
+
+                @Override
+                public Object read(
+                        SourceRecord record, @Nullable TableChanges.TableChange tableSchema) {
+                    if (tableSchema == null) {
+                        return null;
+                    }
+                    return new GenericArrayData(
+                            tableSchema.getTable().primaryKeyColumnNames().stream()
+                                    .map(StringData::fromString)
+                                    .toArray());
+                }
+            }),
+
+    SQL(
+            "sql",
+            DataTypes.STRING().nullable(),
+            new MetadataConverter() {
+                private static final long serialVersionUID = 1L;
+
+                @Override
+                public Object read(SourceRecord record) {
+                    return StringData.fromString("");
+                }
+            }),
+
+    SQL_TYPE(
+            "sql_type",
+            DataTypes.MAP(DataTypes.STRING().nullable(), DataTypes.INT().nullable()).nullable(),
+            new MetadataConverter() {
+                private static final long serialVersionUID = 1L;
+
+                @Override
+                public Object read(SourceRecord record) {
+                    return null;
+                }
+
+                @Override
+                public Object read(
+                        SourceRecord record, @Nullable TableChanges.TableChange tableSchema) {
+                    if (tableSchema == null) {
+                        return null;
+                    }
+                    Map<StringData, Integer> mysqlType = new HashMap<>();
+                    final Table table = tableSchema.getTable();
+                    table.columns()
+                            .forEach(
+                                    column -> {
+                                        mysqlType.put(
+                                                StringData.fromString(column.name()),
+                                                column.jdbcType());
+                                    });
+
+                    return new GenericMapData(mysqlType);
+                }
+            }),
+
+    TS(
+            "ts",
+            DataTypes.TIMESTAMP_WITH_LOCAL_TIME_ZONE(3).notNull(),
+            new MetadataConverter() {
+                private static final long serialVersionUID = 1L;
+
+                @Override
+                public Object read(SourceRecord record) {
+                    Struct messageStruct = (Struct) record.value();
+                    return TimestampData.fromEpochMillis(
+                            (Long) messageStruct.get(Envelope.FieldName.TIMESTAMP));
                 }
             });
 
